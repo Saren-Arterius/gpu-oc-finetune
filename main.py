@@ -8,9 +8,9 @@ import time
 import shlex
 import pyautogui
 
-TEST_SECONDS = 3600
+TEST_SECONDS = 3600                                        
+TEST_METHODS = ['cp2077']
 OFFSET_STEP = 15
-
 db = {}
 
 def save_db():
@@ -24,7 +24,7 @@ save_db()
 parser = configparser.ConfigParser()
 parser.read_string(open(db['config_file']).read())
 if 'default_curve' not in db:
-    print('[Main] setting default_curve')
+    print('[AB Extract] setting default_curve')
     db['default_curve'] = parser['Startup']['VFCurve']
     save_db()
 
@@ -48,6 +48,7 @@ def click_any(images, timeout, confidence=0.9):
 class VFCurve:
     def __init__(self, curve):
         self.data = list(struct.iter_unpack('<f', bytes.fromhex(curve)))
+        self.data_original = list(struct.iter_unpack('<f', bytes.fromhex(curve)))
         self.parse_data()
 
     def parse_data(self):
@@ -93,13 +94,13 @@ class VFCurve:
         parser['Startup']['VFCurve'] = self.encode()
         with open(db['config_file'], 'w') as cfg:
             parser.write(cfg)
-        print('[VF] Restarting AB')
+        print('[Apply AB] Restarting AB')
         subprocess.run('taskkill /f /im MSIAfterburner.exe', shell=True)
         subprocess.Popen('"C:\\Program Files (x86)\\MSI Afterburner\\MSIAfterburner.exe"', shell=True)
         time.sleep(2)
-        print('[VF] AB restarted')
+        print('[Apply AB] AB restarted')
 
-    def be_optimal(self):
+    def data_apply_optimal(self):
         m = 0
         for v, o in reversed(sorted(db['desired_vf_offset'].items(), key=lambda e: float(e[0]))):
             obj = db['vf_offset'][v]
@@ -107,143 +108,186 @@ class VFCurve:
                 m = float(v)
             if 'stable_at' in obj:
                 target_offset = o - (OFFSET_STEP * obj['stable_at'])
-                print(f'[Main] Setting {v}mV and below to +{target_offset}MHz')
+                print(f'[Apply Optimal] Setting {v}mV and below to +{target_offset}MHz')
                 idx = self.l.index(curve.m[v])
                 for i in range(idx, 0, -1):
                     d_idx = self.l[i]['idx']
                     self.data[d_idx + 2] = (target_offset,)
         self.set_max_voltage(str(m))
-                        
+
+    def test(self, methods, gpu_is_testing, gpu_is_ended):
+        for m in methods:
+            print(f'[Test] Testing GPU with {m}')
+            if m == 'cp2077':
+                def cleanup():
+                    try:
+                        subprocess.run('taskkill /f /im REDEngineErrorReporter.exe', shell=True)
+                        subprocess.run('taskkill /f /im Cyberpunk2077.exe', shell=True)
+                    except:
+                        pass
+
+                while True:
+                    cleanup()
+                    subprocess.Popen('"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe" -skipStartScreen', shell=True)
+                    for i in range(120):
+                        try:
+                            w = pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
+                            w.activate()
+                            print(w)
+                            break
+                        except:
+                            print('[cp2077] Waiting for window')
+                        time.sleep(1)
+                    else:
+                        continue
+                    started = False
+                    gpu_is_testing()
+                    for i in range(TEST_SECONDS):
+                        print(f'[cp2077] {i}/{TEST_SECONDS}')
+                        try:
+                            pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
+                        except:
+                            print('[cp2077] Likely crashed')
+                            cleanup()
+                            gpu_is_ended()
+                            return False
+                        pyautogui.press('space')
+                        if not started and click_any([f'cp2077/start.png'], 1, 0.8):
+                            started = True
+                        time.sleep(1)
+                    print('[cp2077] Seems stable')
+                    pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0].close()
+                    gpu_is_ended()
+            if m.startswith('3dmark'):
+                while True:
+                    subprocess.call("start steam://rungameid/223850", shell=True)
+                    for i in range(60):
+                        try:
+                            pyautogui.getWindowsWithTitle("3DMark Advanced Edition")[0].maximize()
+                            break
+                        except:
+                            print('[3DMark] Waiting for "3DMark Advanced Edition" window')
+                        time.sleep(1)
+                    print('[3DMark] Clicking "benchmarks"')
+                    click_any(['3dmark/b1.png', '3dmark/b2.png'], 5)
+
+                    benchmark = TEST_METHOD.split('/')[1]
+                    if benchmark == 'fs':
+                        click_any(['3dmark/fs/c.png'], 5)
+                        click_any(['3dmark/fs/d.png'], 5)
+                        print('[3DMark] Waiting for settings')
+                        time.sleep(10)
+                        for i in range(1, 6):
+                            click_any([f'3dmark/fs/e{i}.png'], 1, 0.99)
+                        click_any(['3dmark/fs/f.png'], 5)
+                    elif benchmark == 'pr':
+                        click_any(['3dmark/pr/c.png'], 5)
+                        click_any(['3dmark/pr/d.png'], 5)
+                        print('[3DMark] Waiting for settings')
+                        time.sleep(10)
+                        for i in range(1, 4):
+                            click_any([f'3dmark/pr/e{i}.png'], 1, 0.99)
+                        click_any(['3dmark/pr/f.png'], 5)
+                    for i in range(30):
+                        try:
+                            w = pyautogui.getWindowsWithTitle("3DMark Workload")[0]
+                            print(w)
+                            break
+                        except:
+                            print('[3DMark] Waiting for "3DMark Workload" window')
+                            pass
+                        time.sleep(1)
+                    else:
+                        continue
+                    break
+                gpu_is_testing()
+                for i in range(TEST_SECONDS):
+                    print(f'[3DMark] {i}/{TEST_SECONDS}')
+                    try:
+                         pyautogui.getWindowsWithTitle("3DMark Workload")[0]
+                    except:
+                        print('[3DMark] Likely crashed')
+                        return False
+                    time.sleep(1)
+                print('[3DMark] Seems stable')
+                pyautogui.getWindowsWithTitle("3DMark Workload")[0].close()
+                gpu_is_ended()
+            if m == 'superposition':
+                res = [(1920, 1080), (1280, 720), (2560, 1440)]
+                timeout = TEST_SECONDS / round(len(res))
+                for w, h in res:
+                    cmd = f'"C:\\Program Files\\Unigine\\Superposition Benchmark\\bin\\superposition.exe" -preset 0 -video_app direct3d11 -shaders_quality 3 -textures_quality 2 -dof 1 -motion_blur 1 -video_vsync 0 -video_mode -1 -console_command "world_load superposition/superposition && render_manager_create_textures 1" -project_name Superposition -video_fullscreen 0 -video_width {w} -video_height {h} -extern_plugin GPUMonitor -mode 0 -sound 0 -tooltips 1'
+                    args = shlex.split(cmd)
+                    start = time.time()
+                    try:
+                        gpu_is_testing()
+                        subprocess.call(cmd, timeout=timeout)
+                        gpu_is_ended()
+                    except:
+                        pass
+                    seconds_passed = time.time() - start
+                    if seconds_passed < timeout:
+                        return False
+        return True
+
+    def optimize(self):
+        if 'vf_offset' not in db:
+            db['vf_offset'] = {}
                     
-
-    def test(self, fn):
-        print('[VF] Starting test')
-        while True:
-            subprocess.call("start steam://rungameid/223850", shell=True)
-            for i in range(60):
-                try:
-                    pyautogui.getWindowsWithTitle("3DMark Advanced Edition")[0].maximize()
-                    break
-                except:
-                    print('[VF] Waiting for "3DMark Advanced Edition" window')
-                    pass
-                time.sleep(1)
-            print('[VF] Clicking "benchmarks"')
-            click_any(['images/b1.png', 'images/b2.png'], 5)
-
-            benchmark = 'pr'
-            if benchmark == 'fs':
-                click_any(['images/fs/c.png'], 5)
-                click_any(['images/fs/d.png'], 5)
-                print('[VF] Waiting for settings')
-                time.sleep(10)
-                for i in range(1, 6):
-                    click_any([f'images/fs/e{i}.png'], 1, 0.99)
-                click_any(['images/fs/f.png'], 5)
-            elif benchmark == 'pr':
-                click_any(['images/pr/c.png'], 5)
-                click_any(['images/pr/d.png'], 5)
-                print('[VF] Waiting for settings')
-                time.sleep(10)
-                for i in range(1, 4):
-                    click_any([f'images/pr/e{i}.png'], 1, 0.99)
-                click_any(['images/pr/f.png'], 5)
-            for i in range(30):
-                try:
-                    w = pyautogui.getWindowsWithTitle("3DMark Workload")[0]
-                    print(w)
-                    break
-                except:
-                    print('[VF] Waiting for "3DMark Workload" window')
-                    pass
-                time.sleep(1)
-            else:
+        for v, o in sorted(db['desired_vf_offset'].items(), key=lambda e: float(e[0])):
+            if v not in db['vf_offset']:
+                db['vf_offset'][v] = {}
+            obj = db['vf_offset'][v]
+            if 'stable_at' in obj:
+                target_offset = o - (OFFSET_STEP * obj['stable_at'])
+                print(f'[Optimize] {v}mV is already tested and is stable at +{target_offset}MHz')
                 continue
-            break
-        fn()
-        for i in range(TEST_SECONDS):
-            try:
-                 pyautogui.getWindowsWithTitle("3DMark Workload")[0]
-            except:
-                print('[VF] Likely crashed')
-                return False
-            time.sleep(1)
-        pyautogui.getWindowsWithTitle("3DMark Workload")[0].close()
-        return True
-        """
-        for w, h in [(1920, 1080), (1280, 720), (2560, 1440)]:
-            cmd = f'"C:\\Program Files\\Unigine\\Superposition Benchmark\\bin\\superposition.exe" -preset 0 -video_app direct3d11 -shaders_quality 3 -textures_quality 2 -dof 1 -motion_blur 1 -video_vsync 0 -video_mode -1 -console_command "world_load superposition/superposition && render_manager_create_textures 1" -project_name Superposition -video_fullscreen 0 -video_width {w} -video_height {h} -extern_plugin GPUMonitor -mode 0 -sound 0 -tooltips 1'
-            args = shlex.split(cmd)
-            start = time.time()
-            try:
-                subprocess.call(cmd, timeout=TEST_SECONDS)
-            except:
-                pass
-            seconds_passed = time.time() - start
-            if seconds_passed < TEST_SECONDS:
-                return False
-        return True
-        """
-        
+            while True:
+                if 'current_gen' not in obj:
+                    obj['current_gen'] = 0
+                if 'is_testing' in obj and obj['is_testing']:
+                    # system rebooted/failed previously
+                    del obj['is_testing']
+                    obj['current_gen'] += 1
+                save_db()
 
-# curve = VFCurve(db['default_curve'])
-# curve.display()
+                target_offset = o - (OFFSET_STEP * obj['current_gen'])
+                if target_offset < 0:
+                    print(f'[Optimize] No stable OC at {v}mV')
+                    break
+                self.data = self.data_original.copy()
+                self.set_max_voltage(v)
+                self.set_offset(v, target_offset)
+                self.display(True)
+                time.sleep(2)
+                self.apply_to_ab()
+                
+                def gpu_is_testing():
+                    print('[Optimize] GPU test started')
+                    obj['is_testing'] = True
+                    save_db()
 
-print("[Main] Starting in 5 seconds")
-# time.sleep(5)
+                def gpu_is_ended():
+                    print('[Optimize] GPU test ended')
+                    if 'is_testing' in obj:
+                        del obj['is_testing']
+                    save_db()
 
-if 'vf_offset' not in db:
-    db['vf_offset'] = {}
-            
-for v, o in sorted(db['desired_vf_offset'].items(), key=lambda e: float(e[0])):
-    if v not in db['vf_offset']:
-        db['vf_offset'][v] = {}
-    obj = db['vf_offset'][v]
-    if 'stable_at' in obj:
-        target_offset = o - (OFFSET_STEP * obj['stable_at'])
-        print(f'[Main] {v}mV is already tested and is stable at +{target_offset}MHz')
-        continue
-    while True:
-        if 'current_gen' not in obj:
-            obj['current_gen'] = 0
-        if 'is_testing' in obj and obj['is_testing']:
-            # system rebooted/failed previously
-            del obj['is_testing']
-            obj['current_gen'] += 1
-        save_db()
+                time.sleep(2)
+                is_stable = curve.test(TEST_METHODS, gpu_is_testing, gpu_is_ended)
+                gpu_is_ended()
+                
+                if is_stable:
+                    print(f'[Optimize] Assuming +{target_offset}MHz is stable at {v}mV')
+                    obj['stable_at'] = obj['current_gen']
+                    save_db()
+                    break
+                obj['current_gen'] += 1
+                save_db()
+                print(f'[Optimize] +{target_offset}mhz is not stable at {v}mV, moving on')
 
-        target_offset = o - (OFFSET_STEP * obj['current_gen'])
-        if target_offset < 0:
-            print(f'[Main] No stable OC at {v}mV')
-            break
-        curve = VFCurve(db['default_curve'])
-        curve.set_max_voltage(v)
-        curve.set_offset(v, target_offset)
-        curve.display(True)
-        curve.apply_to_ab()
-        
-        def actual_running():
-            print('[Main] Real test started')
-            obj['is_testing'] = True
-            save_db()
-            
-        is_stable = curve.test(actual_running)
-
-        if 'is_testing' in obj:
-            del obj['is_testing']
-        if is_stable:
-            print(f'[Main] Assuming +{target_offset}MHz is stable at {v}mV')
-            obj['stable_at'] = obj['current_gen']
-            save_db()
-            break
-        obj['current_gen'] += 1
-        save_db()
-        print(f'[Main] +{target_offset}mhz is not stable at {v}mV, moving on')
-        time.sleep(5)
-
-print(f'[Main] Setting optimal curve')
 curve = VFCurve(db['default_curve'])
-curve.be_optimal()
-curve.parse_data()
+curve.optimize()
+curve.data_apply_optimal()
 # curve.display(True)
 curve.apply_to_ab()
