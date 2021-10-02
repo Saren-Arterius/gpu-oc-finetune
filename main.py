@@ -8,8 +8,7 @@ import time
 import shlex
 import pyautogui
 
-TEST_SECONDS = 3600                                        
-TEST_METHODS = ['cp2077']
+TEST_SECONDS = 3600
 OFFSET_STEP = 15
 db = {}
 
@@ -22,7 +21,7 @@ db = json.loads(open('db.json').read())
 save_db()
 
 parser = configparser.ConfigParser()
-parser.read_string(open(db['config_file']).read())
+parser.read_string(open(db['_config_file']).read())
 if 'default_curve' not in db:
     print('[AB Extract] setting default_curve')
     db['default_curve'] = parser['Startup']['VFCurve']
@@ -72,8 +71,12 @@ class VFCurve:
         return packed.hex()
 
     def set_offset(self, mv, target_offset):
-        idx = self.m[mv]['idx']
-        self.data[idx + 2] = (target_offset,)
+        idx = self.l.index(curve.m[mv])
+        for i in range(idx, 0, -1):
+            d_idx = self.l[i]['idx']
+            self.data[d_idx + 2] = (target_offset,)
+        # idx = self.m[mv]['idx']
+        # self.data[idx + 2] = (target_offset,)
         self.parse_data()
 
     def set_max_voltage(self, mv):
@@ -92,7 +95,7 @@ class VFCurve:
     def apply_to_ab(self):
         parser['Startup']['coreclkboost'] = '0'
         parser['Startup']['VFCurve'] = self.encode()
-        with open(db['config_file'], 'w') as cfg:
+        with open(db['_config_file'], 'w') as cfg:
             parser.write(cfg)
         print('[Apply AB] Restarting AB')
         subprocess.run('taskkill /f /im MSIAfterburner.exe', shell=True)
@@ -102,14 +105,24 @@ class VFCurve:
 
     def data_apply_optimal(self):
         m = 0
-        for v, o in reversed(sorted(db['desired_vf_offset'].items(), key=lambda e: float(e[0]))):
+        tmp = {}
+        for v, o in reversed(sorted(db['_desired_vf_offset'].items(), key=lambda e: float(e[0]))):
             obj = db['vf_offset'][v]
             if float(v) > m:
                 m = float(v)
             if 'stable_at' in obj:
                 target_offset = o - (OFFSET_STEP * obj['stable_at'])
-                print(f'[Apply Optimal] Setting {v}mV and below to +{target_offset}MHz')
-                idx = self.l.index(curve.m[v])
+                tmp[v] = target_offset
+        for v, o in reversed(sorted(db['_desired_vf_offset'].items(), key=lambda e: float(e[0]))):
+            obj = db['vf_offset'][v]
+            if 'stable_at' in obj:
+                target_offset = o - (OFFSET_STEP * obj['stable_at'])
+                # offset at higher voltages should not be more than points at lower voltage
+                for tv, to in tmp.items():
+                    if float(tv) < float(v) and to < target_offset:
+                        target_offset = to
+                print(f'[Apply Optimal] Setting {v}mV and below to +{target_offset}MHz (={self.m[v]["mhz"] + target_offset}MHz)')
+                idx = self.l.index(self.m[v])
                 for i in range(idx, 0, -1):
                     d_idx = self.l[i]['idx']
                     self.data[d_idx + 2] = (target_offset,)
@@ -131,7 +144,7 @@ class VFCurve:
                     subprocess.Popen('"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe" -skipStartScreen', shell=True)
                     for i in range(120):
                         try:
-                            w = pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
+                            w = pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C)  2020 by CD Projekt RED")[0]
                             w.activate()
                             print(w)
                             break
@@ -235,7 +248,7 @@ class VFCurve:
         if 'vf_offset' not in db:
             db['vf_offset'] = {}
                     
-        for v, o in sorted(db['desired_vf_offset'].items(), key=lambda e: float(e[0])):
+        for v, o in sorted(db['_desired_vf_offset'].items(), key=lambda e: float(e[0])):
             if v not in db['vf_offset']:
                 db['vf_offset'][v] = {}
             obj = db['vf_offset'][v]
@@ -275,7 +288,7 @@ class VFCurve:
                     save_db()
 
                 time.sleep(2) 
-                is_stable = curve.test(TEST_METHODS, gpu_is_testing, gpu_is_ended)
+                is_stable = curve.test(db['_test_methods'], gpu_is_testing, gpu_is_ended)
                 gpu_is_ended()
                 
                 if is_stable:
@@ -288,7 +301,7 @@ class VFCurve:
                 print(f'[Optimize] +{target_offset}mhz is not stable at {v}mV, moving on')
 
 curve = VFCurve(db['default_curve'])
-curve.optimize()
+# curve.optimize()
 curve.data_apply_optimal()
 # curve.display(True)
 curve.apply_to_ab()
