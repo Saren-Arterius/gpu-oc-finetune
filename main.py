@@ -121,7 +121,7 @@ class VFCurve:
             if m == 'cp2077':
                 def cleanup():
                     try:
-                        subprocess.run('taskkill /f /im REDEngineErrorReporter.exe', shell=True)
+                        subprocess.run('taskkill /f /im CrashReporter.exe', shell=True)
                         subprocess.run('taskkill /f /im Cyberpunk2077.exe', shell=True)
                     except:
                         pass
@@ -140,24 +140,25 @@ class VFCurve:
                         time.sleep(1)
                     else:
                         continue
-                    started = False
-                    gpu_is_testing()
-                    for i in range(TEST_SECONDS):
-                        print(f'[cp2077] {i}/{TEST_SECONDS}')
-                        try:
-                            pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
-                        except:
-                            print('[cp2077] Likely crashed')
-                            cleanup()
-                            gpu_is_ended()
-                            return False
-                        pyautogui.press('space')
-                        if not started and click_any([f'cp2077/start.png'], 1, 0.8):
-                            started = True
-                        time.sleep(1)
-                    print('[cp2077] Seems stable')
-                    pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0].close()
-                    gpu_is_ended()
+                    break
+                started = False
+                gpu_is_testing()
+                for i in range(TEST_SECONDS):
+                    print(f'[cp2077] {i}/{TEST_SECONDS}')
+                    try:
+                        pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
+                    except:
+                        print('[cp2077] Likely crashed')
+                        cleanup()
+                        gpu_is_ended()
+                        return False
+                    pyautogui.press('space')
+                    if not started and click_any([f'cp2077/start.png'], 1, 0.8):
+                        started = True
+                    time.sleep(1)
+                print('[cp2077] Seems stable')
+                pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0].close()
+                gpu_is_ended()
             if m.startswith('3dmark'):
                 while True:
                     subprocess.call("start steam://rungameid/223850", shell=True)
@@ -268,12 +269,12 @@ class VFCurve:
                     save_db()
 
                 def gpu_is_ended():
-                    print('[Optimize] GPU test ended')
+                    print('[Optimiz e] GPU test ended')
                     if 'is_testing' in obj:
                         del obj['is_testing']
                     save_db()
 
-                time.sleep(2)
+                time.sleep(2) 
                 is_stable = curve.test(TEST_METHODS, gpu_is_testing, gpu_is_ended)
                 gpu_is_ended()
                 
