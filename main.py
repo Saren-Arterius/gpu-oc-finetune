@@ -144,7 +144,7 @@ class VFCurve:
                     subprocess.Popen('"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe" -skipStartScreen', shell=True)
                     for i in range(120):
                         try:
-                            w = pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C)  2020 by CD Projekt RED")[0]
+                            w = pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0]
                             w.activate()
                             print(w)
                             break
