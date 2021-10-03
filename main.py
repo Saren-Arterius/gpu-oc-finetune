@@ -22,6 +22,7 @@ save_db()
 
 parser = configparser.ConfigParser()
 parser.read_string(open(db['_config_file']).read())
+
 if 'default_curve' not in db:
     print('[AB Extract] setting default_curve')
     db['default_curve'] = parser['Startup']['VFCurve']
@@ -174,7 +175,18 @@ class VFCurve:
                 pyautogui.getWindowsWithTitle("Cyberpunk 2077 (C) 2020 by CD Projekt RED")[0].close()
                 gpu_is_ended()
             if m.startswith('3dmark'):
+                def cleanup():
+                    try:
+                        subprocess.run('taskkill /f /im 3DMark.exe', shell=True)
+                        subprocess.run('taskkill /f /im 3DMarkLauncher.exe', shell=True)
+                        subprocess.run('taskkill /f /im FMSISvc.exe', shell=True)
+                        subprocess.run('taskkill /f /im javaw.exe', shell=True)
+                        time.sleep(5)
+                    except:
+                        pass
+                    
                 while True:
+                    cleanup()
                     subprocess.call("start steam://rungameid/223850", shell=True)
                     for i in range(60):
                         try:
@@ -227,6 +239,7 @@ class VFCurve:
                 print('[3DMark] Seems stable')
                 pyautogui.getWindowsWithTitle("3DMark Workload")[0].close()
                 gpu_is_ended()
+                cleanup()
             if m == 'superposition':
                 res = [(1920, 1080), (1280, 720), (2560, 1440)]
                 timeout = TEST_SECONDS / round(len(res))
