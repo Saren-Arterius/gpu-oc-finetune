@@ -179,7 +179,7 @@ class VFCurve:
                     try:
                         subprocess.run('taskkill /f /im 3DMark.exe', shell=True)
                         subprocess.run('taskkill /f /im 3DMarkLauncher.exe', shell=True)
-                        subprocess.run('taskkill /f /im FMSISvc.exe', shell=True)
+                        subprocess.run('taskkill /f /im SystemInfoHelper.exe', shell=True)
                         subprocess.run('taskkill /f /im javaw.exe', shell=True)
                         time.sleep(5)
                     except:
