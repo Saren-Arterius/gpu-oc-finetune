@@ -106,17 +106,18 @@ class VFCurve:
     def data_apply_optimal(self):
         m = 0
         tmp = {}
+        gen_o = db['_final_generation_offset'] if '_final_generation_offset' in db else 0
         for v, o in reversed(sorted(db['_desired_vf_offset'].items(), key=lambda e: float(e[0]))):
             obj = db['vf_offset'][v]
             if float(v) > m:
                 m = float(v)
             if 'stable_at' in obj:
-                target_offset = o - (OFFSET_STEP * obj['stable_at'])
+                target_offset = o - (OFFSET_STEP * (obj['stable_at'] + gen_o))
                 tmp[v] = target_offset
         for v, o in reversed(sorted(db['_desired_vf_offset'].items(), key=lambda e: float(e[0]))):
             obj = db['vf_offset'][v]
             if 'stable_at' in obj:
-                target_offset = o - (OFFSET_STEP * obj['stable_at'])
+                target_offset = o - (OFFSET_STEP * (obj['stable_at'] + gen_o))
                 # offset at higher voltages should not be more than points at lower voltage
                 for tv, to in tmp.items():
                     if float(tv) < float(v) and to < target_offset:
@@ -185,7 +186,7 @@ class VFCurve:
                     print('[3DMark] Clicking "benchmarks"')
                     click_any(['3dmark/b1.png', '3dmark/b2.png'], 5)
 
-                    benchmark = TEST_METHOD.split('/')[1]
+                    benchmark = m.split('/')[1]
                     if benchmark == 'fs':
                         click_any(['3dmark/fs/c.png'], 5)
                         click_any(['3dmark/fs/d.png'], 5)
@@ -287,7 +288,7 @@ class VFCurve:
                         del obj['is_testing']
                     save_db()
 
-                time.sleep(2) 
+                time.sleep(2)
                 is_stable = curve.test(db['_test_methods'], gpu_is_testing, gpu_is_ended)
                 gpu_is_ended()
                 
@@ -301,7 +302,7 @@ class VFCurve:
                 print(f'[Optimize] +{target_offset}mhz is not stable at {v}mV, moving on')
 
 curve = VFCurve(db['default_curve'])
-# curve.optimize()
+curve.optimize()
 curve.data_apply_optimal()
-# curve.display(True)
+curve.display(True)
 curve.apply_to_ab()
