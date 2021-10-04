@@ -28,19 +28,23 @@
             "current_gen": 4
         },
         "850.0": {
-            "current_gen": 8
+            "current_gen": 11,
+            "stable_at": 11
         },
         "875.0": {
-            "current_gen": 3
+            "current_gen": 8,
+            "stable_at": 8
         },
         "900.0": {
-            "current_gen": 4
+            "current_gen": 7,
+            "stable_at": 7
         },
         "925.0": {
-            "current_gen": 4
+            "current_gen": 8,
+            "stable_at": 8
         },
         "950.0": {
-            "current_gen": 4
+            "current_gen": 7
         },
         "975.0": {
             "current_gen": 4

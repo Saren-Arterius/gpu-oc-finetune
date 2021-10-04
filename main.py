@@ -181,12 +181,13 @@ class VFCurve:
                         subprocess.run('taskkill /f /im 3DMarkLauncher.exe', shell=True)
                         subprocess.run('taskkill /f /im SystemInfoHelper.exe', shell=True)
                         subprocess.run('taskkill /f /im javaw.exe', shell=True)
+                        subprocess.run('taskkill /f /im FMSISvc.exe', shell=True)
                         time.sleep(5)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(e)
                     
                 while True:
-                    cleanup()
+                    # cleanup()
                     subprocess.call("start steam://rungameid/223850", shell=True)
                     for i in range(60):
                         try:
@@ -199,6 +200,7 @@ class VFCurve:
                     click_any(['3dmark/b1.png', '3dmark/b2.png'], 5)
 
                     benchmark = m.split('/')[1]
+                    cont = False
                     if benchmark == 'fs':
                         click_any(['3dmark/fs/c.png'], 5)
                         click_any(['3dmark/fs/d.png'], 5)
@@ -206,7 +208,7 @@ class VFCurve:
                         time.sleep(10)
                         for i in range(1, 6):
                             click_any([f'3dmark/fs/e{i}.png'], 1, 0.99)
-                        click_any(['3dmark/fs/f.png'], 5)
+                        cont = click_any(['3dmark/fs/f.png'], 5)
                     elif benchmark == 'pr':
                         click_any(['3dmark/pr/c.png'], 5)
                         click_any(['3dmark/pr/d.png'], 5)
@@ -214,7 +216,10 @@ class VFCurve:
                         time.sleep(10)
                         for i in range(1, 4):
                             click_any([f'3dmark/pr/e{i}.png'], 1, 0.99)
-                        click_any(['3dmark/pr/f.png'], 5)
+                        cont = click_any(['3dmark/pr/f.png'], 5)
+                    if not cont:
+                        cleanup()
+                        continue
                     for i in range(30):
                         try:
                             w = pyautogui.getWindowsWithTitle("3DMark Workload")[0]
@@ -225,6 +230,7 @@ class VFCurve:
                             pass
                         time.sleep(1)
                     else:
+                        cleanup()
                         continue
                     break
                 gpu_is_testing()
@@ -239,7 +245,7 @@ class VFCurve:
                 print('[3DMark] Seems stable')
                 pyautogui.getWindowsWithTitle("3DMark Workload")[0].close()
                 gpu_is_ended()
-                cleanup()
+                # cleanup()
             if m == 'superposition':
                 res = [(1920, 1080), (1280, 720), (2560, 1440)]
                 timeout = TEST_SECONDS / round(len(res))
