@@ -240,6 +240,7 @@ class VFCurve:
                          pyautogui.getWindowsWithTitle("3DMark Workload")[0]
                     except:
                         print('[3DMark] Likely crashed')
+                        time.sleep(5)
                         return False
                     time.sleep(1)
                 print('[3DMark] Seems stable')
